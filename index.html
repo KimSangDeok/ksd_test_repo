@@ -850,7 +850,13 @@ var PLACES = [{"kind": "행복주택", "cat": "pri", "name": "방화스카이포
 (function(){
   var s = document.createElement('script');
   s.src = 'https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=' + encodeURIComponent(NCP_KEY_ID) + '&submodules=geocoder';
-  s.onload = nmInit; s.onerror = function(){ nmFail('지도 스크립트를 못 불러왔습니다. 인터넷 연결과 ncpKeyId 값을 확인하세요.'); };
+  // geocoder 서브모듈은 maps.js 뒤에 비동기로 붙으므로 Service가 준비된 뒤에 시작
+  s.onload = function(){
+    var started = false, start = function(){ if (started) return; started = true; nmInit(); };
+    if (window.naver && naver.maps) { if (naver.maps.Service) return start(); naver.maps.onJSContentLoaded = start; }
+    var tries = 0, t = setInterval(function(){ if (window.naver && naver.maps && naver.maps.Service) { clearInterval(t); start(); } else if (++tries > 100) { clearInterval(t); nmFail('Geocoding 모듈을 못 불러왔습니다. 콘솔에서 Application에 Geocoding이 체크돼 있는지 확인.'); } }, 100);
+  };
+  s.onerror = function(){ nmFail('지도 스크립트를 못 불러왔습니다. 인터넷 연결과 ncpKeyId 값을 확인하세요.'); };
   document.head.appendChild(s);
 })();
 function nmFail(html){ var m = document.getElementById('nm-msg'); m.innerHTML = '<p>' + html + '</p>'; m.hidden = false; }
