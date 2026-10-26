@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공공임대 후보 단지 지도 (네이버지도)</title>
+<style>
+  :root{--bg:#f3f5f8;--surface:#fff;--fg:#1b2330;--muted:#5f6b7a;--line:#dde3ea;--accent:#1f5fbf;--ok:#1d8a4e;--warn:#b46a00;--bad:#c23c3c;--kook:#c97a00}
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{font-family:"Noto Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:var(--fg);background:var(--bg);display:flex;flex-direction:column}
+  header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--line);font-size:13.5px}
+  header h1{font-size:16px;margin:0 8px 0 0}
+  header label{display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+  .sq{display:inline-block;width:12px;height:12px;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+  #wrap{flex:1;display:flex;min-height:0}
+  #map{flex:1;min-height:60vh}
+  #list{width:330px;max-width:45vw;overflow:auto;background:var(--surface);border-left:1px solid var(--line);font-size:13px}
+  #list .it{padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+  #list .it:hover{background:#eef3fb}
+  #list .it b{display:block}
+  #list .it small{color:var(--muted)}
+  #msg{display:none;padding:14px 16px;background:#fff4e5;border-bottom:1px solid #f1d2a0;font-size:13.5px;line-height:1.6}
+  #msg.show{display:block}
+  .iw{font:13px/1.55 "Noto Sans KR",system-ui,sans-serif;padding:10px 12px;min-width:220px;max-width:300px}
+  .iw b{font-size:14px}
+  .iw .k{color:var(--muted)}
+  .iw a{color:var(--accent)}
+  .mk{width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+  .mk.sm{width:11px;height:11px}
+  .mk.sq{border-radius:2px}
+  .mk.home{width:0;height:0;border:0;box-shadow:none;font-size:22px;line-height:1}
+  @media (max-width:760px){ #wrap{flex-direction:column} #list{width:auto;max-width:none;max-height:38vh;border-left:0;border-top:1px solid var(--line)} }
+</style>
+</head>
+<body>
+<header>
+  <h1>공공임대 후보 단지</h1>
+  <label><input type="checkbox" data-cat="pri" checked> <span class="dot" style="background:var(--ok)"></span> 행복주택 · 우선 1순위 가능</label>
+  <label><input type="checkbox" data-cat="big" checked> <span class="dot" style="background:var(--accent)"></span> 행복주택 36㎡↑ (일반 추첨)</label>
+  <label><input type="checkbox" data-cat="small"> <span class="dot" style="background:#8a94a3"></span> 행복주택 27~35㎡</label>
+  <label><input type="checkbox" data-cat="kook" checked> <span class="sq" style="background:var(--kook)"></span> 국민임대 지구</label>
+  <span id="status" style="color:var(--muted)"></span>
+</header>
+<div id="msg"></div>
+<div id="wrap">
+  <div id="map"></div>
+  <div id="list"></div>
+</div>
+
+<script>
+// ===== 1) 여기만 고치면 됨 =====
+var NCP_KEY_ID = '7lizv5y6f1';                     // 네이버 클라우드 콘솔 > Maps > Application > 인증 정보 > Client ID
+var HOME = { label: '집', addr: '서울특별시 강서구 마곡동', approx: [37.560, 126.830] };   // 실제 도로명주소로 바꾸면 정확히 찍힘
+var WORK = { label: '회사', addr: '서울특별시 동대문구', approx: [37.574, 127.040] };
+// ==============================
+
+var PLACES = [{"kind": "행복주택", "cat": "pri", "name": "방화스카이포레", "gu": "강서", "addr": "서울특별시 강서구 방화동 개화동로21길 22", "approx": [37.578, 126.812], "m2": 29.09, "py": "8.8평", "vac": 4, "wait": 8, "dep": "7,272만", "rent": "26.6만", "notice": "2026 2차", "rank": "우선 1순위", "q": "방화스카이포레", "pick": true}, {"kind": "행복주택", "cat": "pri", "name": "이문 아이파크 자이", "gu": "동대문", "addr": "서울특별시 동대문구 이문로 120", "approx": [37.6, 127.06], "m2": 33.54, "py": "10.1평", "vac": 5, "wait": 7, "dep": "8,208만", "rent": "32.1만", "notice": "2026 1차", "rank": "우선 1순위", "q": "이문아이파크자이", "pick": true}, {"kind": "행복주택", "cat": "pri", "name": "e편한세상 청계센트럴포레", "gu": "동대문", "addr": "서울특별시 동대문구 용두동 무학로 91", "approx": [37.577, 127.03], "m2": 39.92, "py": "12.1평", "vac": 1, "wait": 4, "dep": "1억 1,460만", "rent": "41.0만", "notice": "2026 2차", "rank": "일반 추첨", "q": "e편한세상 청계센트럴포레", "pick": true}, {"kind": "행복주택", "cat": "small", "name": "목동센트럴아이파크위브", "gu": "양천", "addr": "서울특별시 양천구 신월동 남부순환로83길 18", "approx": [37.521, 126.84], "m2": 34.24, "py": "10.4평", "vac": 18, "wait": 34, "dep": "9,851만", "rent": "32.0만", "notice": "2026 1차", "rank": "일반 추첨", "q": "목동센트럴아이파크위브 2단지", "pick": true}, {"kind": "행복주택", "cat": "small", "name": "이든채", "gu": "양천", "addr": "서울특별시 양천구 신정동 신정로7길 75", "approx": [37.519, 126.853], "m2": 31.31, "py": "9.5평", "vac": 5, "wait": 8, "dep": "5,940만", "rent": "23.3만", "notice": "2026 1차", "rank": "일반 추첨", "q": "양천구 신정로7길 75", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "아크로타워스퀘어", "gu": "영등포", "addr": "서울특별시 영등포구 영등포동 국회대로54길 10", "approx": [37.519, 126.909], "m2": 26.78, "py": "8.1평", "vac": 0, "wait": 10, "dep": "8,964만", "rent": "35.9만", "notice": "2026 1차", "rank": "예비만", "q": "아크로타워스퀘어", "pick": false}, {"kind": "행복주택", "cat": "big", "name": "천왕이펜하우스8단지", "gu": "구로", "addr": "서울특별시 구로구 천왕동 금오로 882", "approx": [37.483, 126.838], "m2": 36.87, "py": "11.2평", "vac": 11, "wait": 21, "dep": "6,552만", "rent": "24.6만", "notice": "2026 2차", "rank": "일반 추첨", "q": "천왕이펜하우스8단지", "pick": true}, {"kind": "행복주택", "cat": "small", "name": "항동 하버라인", "gu": "구로", "addr": "서울특별시 구로구 항동 항동로 68", "approx": [37.48, 126.824], "m2": 29.69, "py": "9.0평", "vac": 25, "wait": 93, "dep": "5,760만", "rent": "21.6만", "notice": "2026 2차", "rank": "일반 추첨", "q": "항동하버라인 9단지", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "천왕이펜하우스7", "gu": "구로", "addr": "서울특별시 구로구 천왕동 천왕로 21", "approx": [37.486, 126.842], "m2": 29.96, "py": "9.1평", "vac": 10, "wait": 54, "dep": "4,536만", "rent": "17.0만", "notice": "2026 1차", "rank": "일반 추첨", "q": "천왕이펜하우스7단지", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "천왕이펜하우스8단지", "gu": "구로", "addr": "서울특별시 구로구 천왕동 금오로 882", "approx": [37.483, 126.838], "m2": 29.38, "py": "8.9평", "vac": 8, "wait": 27, "dep": "5,256만", "rent": "19.7만", "notice": "2026 1차", "rank": "일반 추첨", "q": "천왕이펜하우스8단지", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "천왕연지마을1", "gu": "구로", "addr": "서울특별시 구로구 천왕동 오류로 36-13", "approx": [37.489, 126.836], "m2": 32.31, "py": "9.8평", "vac": 0, "wait": 11, "dep": "5,040만", "rent": "21.5만", "notice": "2026 1차", "rank": "예비만", "q": "천왕연지마을1단지", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "천왕연지마을2", "gu": "구로", "addr": "서울특별시 구로구 천왕동 오리로1102-13", "approx": [37.488, 126.834], "m2": 31.06, "py": "9.4평", "vac": 0, "wait": 6, "dep": "4,824만", "rent": "20.5만", "notice": "2026 1차", "rank": "예비만", "q": "천왕연지마을2단지", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "마포더클래시", "gu": "마포", "addr": "서울특별시 마포구 아현동 신촌로28길 50", "approx": [37.556, 126.955], "m2": 32.89, "py": "9.9평", "vac": 0, "wait": 2, "dep": "9,216만", "rent": "36.2만", "notice": "2026 1차", "rank": "예비만", "q": "마포더클래시", "pick": false}, {"kind": "행복주택", "cat": "big", "name": "공덕동 크로시티", "gu": "마포", "addr": "서울특별시 마포구 공덕동", "approx": [37.545, 126.952], "m2": 36.67, "py": "11.1평", "vac": 0, "wait": 10, "dep": "1억 3,464만", "rent": "52.7만", "notice": "2026 2차", "rank": "예비만", "q": "공덕동 크로시티", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "마포자이더센트리지", "gu": "마포", "addr": "서울특별시 마포구 염리동", "approx": [37.549, 126.946], "m2": 34.8, "py": "10.5평", "vac": 1, "wait": 3, "dep": "1억 4,202만", "rent": "49.6만", "notice": "2026 2차", "rank": "일반 추첨", "q": "마포자이더센트리지", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "e편한세상신촌", "gu": "서대문", "addr": "서울특별시 서대문구 북아현로1길 17", "approx": [37.559, 126.955], "m2": 32.74, "py": "9.9평", "vac": 11, "wait": 43, "dep": "1억 1,271만", "rent": "44.1만", "notice": "2026 1차", "rank": "일반 추첨", "q": "e편한세상신촌", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "홍제센트럴아이파크", "gu": "서대문", "addr": "서울특별시 서대문구 통일로 395", "approx": [37.586, 126.942], "m2": 34.89, "py": "10.6평", "vac": 5, "wait": 11, "dep": "1억 546만", "rent": "40.0만", "notice": "2026 1차", "rank": "일반 추첨", "q": "홍제센트럴아이파크", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "래미안루센티아", "gu": "서대문", "addr": "서울특별시 서대문구 거북골로 100", "approx": [37.577, 126.918], "m2": 34.12, "py": "10.3평", "vac": 4, "wait": 14, "dep": "1억 1,151만", "rent": "39.5만", "notice": "2026 1차", "rank": "일반 추첨", "q": "래미안루센티아", "pick": false}, {"kind": "행복주택", "cat": "big", "name": "힐스테이트신촌", "gu": "서대문", "addr": "서울특별시 서대문구 이화여대8길 123", "approx": [37.563, 126.953], "m2": 37.97, "py": "11.5평", "vac": 3, "wait": 5, "dep": "1억 3,454만", "rent": "51.6만", "notice": "2026 1차", "rank": "일반 추첨", "q": "힐스테이트신촌", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "북한산두산위브", "gu": "서대문", "addr": "서울특별시 서대문구 홍은동", "approx": [37.593, 126.937], "m2": 33.05, "py": "10.0평", "vac": 2, "wait": 5, "dep": "1억 1,664만", "rent": "43.9만", "notice": "2026 2차", "rank": "일반 추첨", "q": "북한산두산위브", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "대치르엘", "gu": "강남", "addr": "서울특별시 강남구 대치동 도곡로93길 23", "approx": [37.5, 127.06], "m2": 35.96, "py": "10.9평", "vac": 0, "wait": 4, "dep": "1억 2,168만", "rent": "48.6만", "notice": "2026 1차", "rank": "예비만", "q": "대치르엘", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "고덕온빛채", "gu": "강동", "addr": "서울특별시 강동구 고덕동 아리수로 385", "approx": [37.56, 127.165], "m2": 29.46, "py": "8.9평", "vac": 0, "wait": 12, "dep": "8,568만", "rent": "34.3만", "notice": "2026 1차", "rank": "예비만", "q": "고덕온빛채", "pick": false}, {"kind": "행복주택", "cat": "big", "name": "고덕온빛채", "gu": "강동", "addr": "서울특별시 강동구 고덕동 아리수로 385", "approx": [37.56, 127.165], "m2": 36.62, "py": "11.1평", "vac": 7, "wait": 14, "dep": "1억 584만", "rent": "42.3만", "notice": "2026 2차", "rank": "일반 추첨", "q": "고덕온빛채", "pick": true}, {"kind": "행복주택", "cat": "big", "name": "강동리엔파크14단지", "gu": "강동", "addr": "서울특별시 강동구 상일동 고덕로98길 160", "approx": [37.555, 127.172], "m2": 36.87, "py": "11.2평", "vac": 3, "wait": 9, "dep": "1억 440만", "rent": "41.8만", "notice": "2026 2차", "rank": "일반 추첨", "q": "강동리엔파크14단지", "pick": true}, {"kind": "행복주택", "cat": "small", "name": "강동리엔파크11단지", "gu": "강동", "addr": "서울특별시 강동구 상일동 고덕로98길 101", "approx": [37.556, 127.168], "m2": 29.99, "py": "9.1평", "vac": 0, "wait": 6, "dep": "8,496만", "rent": "34.0만", "notice": "2026 2차", "rank": "예비만", "q": "강동리엔파크11단지", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "푸르내", "gu": "강동", "addr": "", "approx": null, "m2": 28.14, "py": "8.5평", "vac": 0, "wait": 8, "dep": "8,001만", "rent": "26.0만", "notice": "2026 1차", "rank": "예비만", "q": "푸르내 행복주택 강동구", "pick": false}, {"kind": "행복주택", "cat": "big", "name": "왕십리자이", "gu": "성동", "addr": "서울특별시 성동구 하왕십리동", "approx": [37.564, 127.03], "m2": 38.19, "py": "11.6평", "vac": 3, "wait": 11, "dep": "1억 4,436만", "rent": "59.6만", "notice": "2026 2차", "rank": "일반 추첨", "q": "왕십리자이", "pick": false}, {"kind": "행복주택", "cat": "big", "name": "서울숲리버뷰자이", "gu": "성동", "addr": "서울특별시 성동구 행당동", "approx": [37.556, 127.038], "m2": 36.06, "py": "10.9평", "vac": 2, "wait": 5, "dep": "1억 4,553만", "rent": "58.2만", "notice": "2026 2차", "rank": "일반 추첨", "q": "서울숲리버뷰자이", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "꿈의숲코오롱하늘채", "gu": "성북", "addr": "서울특별시 성북구 장위동 돌곶이로 220", "approx": [37.615, 127.047], "m2": 32.22, "py": "9.7평", "vac": 4, "wait": 10, "dep": "9,540만", "rent": "37.4만", "notice": "2026 1차", "rank": "일반 추첨", "q": "꿈의숲코오롱하늘채", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "래미안길음센터피스", "gu": "성북", "addr": "서울특별시 성북구 숭인로 50", "approx": [37.605, 127.023], "m2": 33.46, "py": "10.1평", "vac": 0, "wait": 8, "dep": "1억 1,808만", "rent": "45.1만", "notice": "2026 1차", "rank": "예비만", "q": "래미안길음센터피스", "pick": false}, {"kind": "행복주택", "cat": "big", "name": "꿈의숲아이파크", "gu": "성북", "addr": "서울특별시 성북구 장위동 돌곶이로40길 46", "approx": [37.616, 127.052], "m2": 39.0, "py": "11.8평", "vac": 6, "wait": 38, "dep": "1억 2,348만", "rent": "47.0만", "notice": "2026 1차", "rank": "일반 추첨", "q": "꿈의숲아이파크", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "보문파크뷰자이", "gu": "성북", "addr": "서울특별시 성북구 보문동", "approx": [37.586, 127.02], "m2": 29.96, "py": "9.1평", "vac": 3, "wait": 15, "dep": "1억 1,664만", "rent": "43.3만", "notice": "2026 2차", "rank": "일반 추첨", "q": "보문파크뷰자이", "pick": false}, {"kind": "행복주택", "cat": "big", "name": "래미안장위퍼스트하이", "gu": "성북", "addr": "서울특별시 성북구 한천로 713", "approx": [37.613, 127.058], "m2": 36.14, "py": "10.9평", "vac": 7, "wait": 13, "dep": "9,936만", "rent": "39.0만", "notice": "2026 2차", "rank": "일반 추첨", "q": "래미안장위퍼스트하이", "pick": true}, {"kind": "행복주택", "cat": "big", "name": "장위자이레디언트", "gu": "성북", "addr": "서울특별시 성북구 장위동", "approx": [37.617, 127.045], "m2": 39.91, "py": "12.1평", "vac": 5, "wait": 14, "dep": "1억 962만", "rent": "42.0만", "notice": "2026 2차", "rank": "일반 추첨", "q": "장위자이레디언트", "pick": true}, {"kind": "행복주택", "cat": "big", "name": "창경궁롯데캐슬시그니처", "gu": "성북", "addr": "서울특별시 성북구 삼선동2가 296", "approx": [37.588, 127.008], "m2": 39.39, "py": "11.9평", "vac": 30, "wait": 0, "dep": "1억 2,096만", "rent": "46.3만", "notice": "2026 2차", "rank": "일반 추첨", "q": "창경궁롯데캐슬시그니처", "pick": true}, {"kind": "행복주택", "cat": "big", "name": "송파시그니처롯데캐슬", "gu": "송파", "addr": "서울특별시 송파구 거여동 거마로 56", "approx": [37.495, 127.145], "m2": 39.9, "py": "12.1평", "vac": 0, "wait": 2, "dep": "1억 2,168만", "rent": "44.5만", "notice": "2026 1차", "rank": "예비만", "q": "송파시그니처롯데캐슬", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "e편한세상송파파크센트럴", "gu": "송파", "addr": "서울특별시 송파구 거여동 오금로 551", "approx": [37.497, 127.14], "m2": 34.93, "py": "10.6평", "vac": 3, "wait": 9, "dep": "1억 2,564만", "rent": "44.3만", "notice": "2026 1차", "rank": "일반 추첨", "q": "e편한세상송파파크센트럴", "pick": false}, {"kind": "행복주택", "cat": "big", "name": "용산롯데캐슬센터포레", "gu": "용산", "addr": "서울특별시 용산구 백범로 313", "approx": [37.546, 126.962], "m2": 38.17, "py": "11.5평", "vac": 0, "wait": 7, "dep": "1억 6,471만", "rent": "61.6만", "notice": "2026 1차", "rank": "예비만", "q": "용산롯데캐슬센터포레", "pick": false}, {"kind": "행복주택", "cat": "big", "name": "용산센트럴파크 헤링턴스퀘어", "gu": "용산", "addr": "서울특별시 용산구 한강로3가 서빙고로 17", "approx": [37.527, 126.962], "m2": 40.67, "py": "12.3평", "vac": 2, "wait": 23, "dep": "1억 7,784만", "rent": "75.6만", "notice": "2026 1차", "rank": "일반 추첨", "q": "용산센트럴파크 헤링턴스퀘어", "pick": false}, {"kind": "행복주택", "cat": "big", "name": "경희궁자이", "gu": "종로", "addr": "서울특별시 종로구 행촌동 송월길 130", "approx": [37.571, 126.962], "m2": 39.06, "py": "11.8평", "vac": 4, "wait": 21, "dep": "1억 3,910만", "rent": "54.5만", "notice": "2026 1차", "rank": "일반 추첨", "q": "경희궁자이", "pick": false}, {"kind": "행복주택", "cat": "big", "name": "신내 글로리움", "gu": "중랑", "addr": "서울특별시 중랑구 신내동 신내로 208", "approx": [37.61, 127.1], "m2": 36.36, "py": "11.0평", "vac": 0, "wait": 28, "dep": "7,056만", "rent": "25.3만", "notice": "2026 1차", "rank": "예비만", "q": "신내글로리움", "pick": true}, {"kind": "행복주택", "cat": "small", "name": "신내3-3 도시형생활주택", "gu": "중랑", "addr": "서울특별시 중랑구 신내동 신내역로1길 142", "approx": [37.614, 127.103], "m2": 29.84, "py": "9.0평", "vac": 0, "wait": 12, "dep": "5,976만", "rent": "25.9만", "notice": "2026 1차", "rank": "예비만", "q": "신내우디안3단지", "pick": false}, {"kind": "행복주택", "cat": "small", "name": "신내3-4 도시형생활주택", "gu": "중랑", "addr": "서울특별시 중랑구 신내동 신내역로 160", "approx": [37.615, 127.105], "m2": 31.85, "py": "9.6평", "vac": 0, "wait": 30, "dep": "5,832만", "rent": "24.3만", "notice": "2026 1차", "rank": "예비만", "q": "신내우디안4단지", "pick": false}, {"kind": "행복주택", "cat": "big", "name": "래미안베라힐즈", "gu": "은평", "addr": "서울특별시 은평구 통일로 630", "approx": [37.603, 126.93], "m2": 38.28, "py": "11.6평", "vac": 27, "wait": 38, "dep": "1억 3,248만", "rent": "53.0만", "notice": "2026 2차", "rank": "일반 추첨", "q": "래미안베라힐즈", "pick": false}, {"kind": "행복주택", "cat": "big", "name": "은뜨락", "gu": "은평", "addr": "서울특별시 은평구 진관동 통일로 972", "approx": [37.64, 126.922], "m2": 39.49, "py": "11.9평", "vac": 25, "wait": 41, "dep": "9,720만", "rent": "38.9만", "notice": "2026 2차", "rank": "일반 추첨", "q": "은평구 통일로 972", "pick": true}, {"kind": "행복주택", "cat": "big", "name": "힐스테이트녹번역", "gu": "은평", "addr": "서울특별시 은평구 응암동", "approx": [37.602, 126.924], "m2": 39.12, "py": "11.8평", "vac": 6, "wait": 10, "dep": "1억 1,652만", "rent": "40.6만", "notice": "2026 2차", "rank": "일반 추첨", "q": "힐스테이트녹번역", "pick": true}, {"kind": "행복주택", "cat": "big", "name": "백련산해모로", "gu": "은평", "addr": "서울특별시 은평구 응암동", "approx": [37.598, 126.918], "m2": 39.1, "py": "11.8평", "vac": 3, "wait": 5, "dep": "1억 836만", "rent": "43.1만", "notice": "2026 2차", "rank": "일반 추첨", "q": "백련산해모로", "pick": false}, {"kind": "행복주택", "cat": "big", "name": "DMCSK뷰", "gu": "은평", "addr": "서울특별시 은평구 수색동", "approx": [37.585, 126.895], "m2": 38.74, "py": "11.7평", "vac": 1, "wait": 3, "dep": "8,751만", "rent": "32.0만", "notice": "2026 2차", "rank": "일반 추첨", "q": "DMC SK뷰", "pick": false}, {"kind": "국민임대", "cat": "kook", "name": "마곡엠밸리 1~15단지", "gu": "강서", "addr": "서울특별시 강서구 마곡서1로 131", "approx": [37.571, 126.84], "info": "49㎡ 2025: 29호(공가 5·예비 24) 5,564만·38.0만 / 2026: 일반 없음 · 59㎡ 2025: 40호(예비) 5,770만·37.6만", "rank": "강서 거주 1순위 (49㎡)", "q": "마곡엠밸리", "pick": true}, {"kind": "국민임대", "cat": "kook", "name": "마곡지구 9단지", "gu": "강서", "addr": "서울특별시 강서구 공항대로 103", "approx": [37.566, 126.826], "info": "49㎡ 2025: 4호(예비) 5,799만·31.9만 / 2026: 주거약자만", "rank": "강서 거주 1순위 (49㎡)", "q": "마곡엠밸리9단지", "pick": true}, {"kind": "국민임대", "cat": "kook", "name": "마곡수명산파크 1~7단지", "gu": "강서", "addr": "서울특별시 강서구 강서로47길 108", "approx": [37.551, 126.837], "info": "39㎡ 2025: 18호(예비) 2,451만·22.2만 · 49㎡ 2025: 22호(공가 4) 3,674~3,900만·26.2~28.7만 · 59㎡ 2025: 27호(공가 11) / 2026: 40호(공가 40) 4,002~4,323만·29.3~32.2만", "rank": "강서 거주 1순위 (49㎡) · 59㎡는 청약 1순위", "q": "마곡수명산파크", "pick": true}, {"kind": "국민임대", "cat": "kook", "name": "신정이펜하우스 1~5단지", "gu": "양천", "addr": "서울특별시 양천구 신정이펜1로 99", "approx": [37.514, 126.845], "info": "49㎡ 2025: 12호(예비) 4,007만·30.4만 / 2026: 주거약자만 · 59㎡ 2025: 50호(공가 5) 4,715만·34.4만 / 2026: 58호(공가 14) 4,715~5,864만", "rank": "연접구(강서) 1순위 (49㎡)", "q": "신정이펜하우스", "pick": true}, {"kind": "국민임대", "cat": "kook", "name": "상암월드컵파크 9~12단지", "gu": "마포", "addr": "서울특별시 마포구 월드컵북로 501", "approx": [37.58, 126.89], "info": "49㎡ 2025: 18호(예비) 4,740만·32.8만 / 2026: 주거약자만 · 59㎡ 2025: 29호(공가 5) 5,702만·37.8만 / 2026: 15호(예비)", "rank": "연접구(강서) 1순위 (49㎡)", "q": "상암월드컵파크", "pick": true}, {"kind": "국민임대", "cat": "kook", "name": "천왕이펜하우스 1~6단지", "gu": "구로", "addr": "서울특별시 구로구 천왕로 91", "approx": [37.485, 126.839], "info": "49㎡ 2026: 48호(공가 8) 4,371~4,912만·32.5~35.0만 · 59㎡ 2026: 62호(공가 22) 5,190~5,993만", "rank": "강서는 2순위 (49㎡) · 59㎡는 청약 1순위", "q": "천왕이펜하우스", "pick": true}, {"kind": "국민임대", "cat": "kook", "name": "천왕연지타운 1,2단지", "gu": "구로", "addr": "서울특별시 구로구 오류로 30", "approx": [37.489, 126.836], "info": "49㎡ 2026: 24호(예비) 5,439~6,190만 · 59㎡ 2026: 36호(공가 2) 6,514~7,645만", "rank": "강서는 2순위 (49㎡)", "q": "천왕연지타운", "pick": true}, {"kind": "국민임대", "cat": "kook", "name": "항동하버라인 2·3·4·8단지", "gu": "구로", "addr": "서울특별시 구로구 연동로 234", "approx": [37.48, 126.824], "info": "49㎡ 2026: 14호(예비) 5,165~5,837만·32.3~35.2만 · 59㎡ 2026: 41호(공가 6) 5,974~6,644만", "rank": "강서는 2순위 (49㎡)", "q": "항동하버라인", "pick": true}];
+
+(function(){
+  var s = document.createElement('script');
+  s.src = 'https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=' + encodeURIComponent(NCP_KEY_ID) + '&submodules=geocoder';
+  s.onload = init; s.onerror = function(){ fail('지도 스크립트를 못 불러왔습니다. 인터넷 연결과 ncpKeyId 값을 확인하세요.'); };
+  document.head.appendChild(s);
+})();
+
+function fail(text){ var m = document.getElementById('msg'); m.innerHTML = text; m.classList.add('show'); }
+window.navermap_authFailure = function(){
+  fail('<b>네이버지도 인증 실패.</b> 순서대로 확인: ① 이 페이지를 <code>file://</code>로 연 건 아닌지 (반드시 <code>http://localhost:포트/…</code>로) ② 콘솔 Application의 Web 서비스 URL에 <code>http://localhost</code>가 포트·경로 없이 등록돼 있는지 ③ Application이 AI·NAVER API가 아니라 <b>Application Services &gt; Maps</b> 아래에 있고 Dynamic Map이 체크돼 있는지 ④ Client ID를 그대로 붙여넣었는지 (파라미터 이름은 ncpKeyId).');
+};
+
+var map, markers = [], infow, cache = {};
+try { cache = JSON.parse(localStorage.getItem('geocache-v1') || '{}'); } catch(e) {}
+function saveCache(){ try { localStorage.setItem('geocache-v1', JSON.stringify(cache)); } catch(e) {} }
+
+function geocode(addr, cb){
+  if (!addr) return cb(null);
+  if (cache[addr]) return cb(cache[addr]);
+  naver.maps.Service.geocode({ query: addr }, function(status, response){
+    if (status !== naver.maps.Service.Status.OK) return cb(null);
+    var a = response.v2 && response.v2.addresses;
+    if (!a || !a.length) return cb(null);
+    var pt = [parseFloat(a[0].y), parseFloat(a[0].x)];
+    cache[addr] = pt; saveCache(); cb(pt);
+  });
+}
+
+function color(p){ return p.cat === 'pri' ? 'var(--ok)' : p.cat === 'big' ? 'var(--accent)' : p.cat === 'kook' ? 'var(--kook)' : '#8a94a3'; }
+function iconFor(p, approx){
+  var cls = 'mk' + (p.cat === 'small' ? ' sm' : '') + (p.cat === 'kook' ? ' sq' : '');
+  var size = p.cat === 'small' ? 11 : 16;
+  return { content: '<div class="' + cls + '" style="background:' + color(p) + (approx ? ';opacity:.75;border-style:dashed' : '') + '" title="' + p.name + '"></div>', anchor: new naver.maps.Point(size/2, size/2) };
+}
+function iwHtml(p, approx){
+  var nav = 'https://map.naver.com/p/search/' + encodeURIComponent(p.q || p.name);
+  var body = p.kind === '행복주택'
+    ? '<div><span class="k">전용</span> ' + p.m2 + '㎡ (' + p.py + ') · <span class="k">공가</span> ' + p.vac + (p.wait ? ' · <span class="k">예비</span> ' + p.wait : '') + '</div>' +
+      '<div><span class="k">보증금</span> ' + p.dep + ' · <span class="k">월</span> ' + p.rent + ' <span class="k">(청년 소득있음, ' + p.notice + ')</span></div>'
+    : '<div>' + p.info + '</div>';
+  return '<div class="iw"><b>' + p.name + '</b> <span class="k">' + p.kind + '</span><br>' + body +
+    '<div><span class="k">내 순위</span> ' + p.rank + '</div>' +
+    '<div class="k" style="margin-top:4px">' + (p.addr || '') + (approx ? ' · <b style="color:var(--bad)">근사 위치</b>(주소 변환 실패)' : '') + '</div>' +
+    '<div style="margin-top:6px"><a href="' + nav + '" target="_blank" rel="noopener">네이버지도에서 열기 · 길찾기</a></div></div>';
+}
+
+function init(){
+  if (!window.naver || !naver.maps) return;
+  map = new naver.maps.Map('map', { center: new naver.maps.LatLng(37.565, 126.93), zoom: 11, zoomControl: true, zoomControlOptions: { position: naver.maps.Position.TOP_LEFT } });
+  infow = new naver.maps.InfoWindow({ borderWidth: 0, backgroundColor: 'transparent', disableAnchor: true, pixelOffset: new naver.maps.Point(0, -6) });
+  var status = document.getElementById('status');
+  var list = document.getElementById('list');
+
+  // 집·회사
+  [HOME, WORK].forEach(function(h){
+    geocode(h.addr, function(pt){
+      var p = pt || h.approx;
+      new naver.maps.Marker({ map: map, position: new naver.maps.LatLng(p[0], p[1]), zIndex: 50,
+        icon: { content: '<div class="mk home" title="' + h.label + '">' + (h.label === '집' ? '🏠' : '💼') + '</div>', anchor: new naver.maps.Point(11, 22) } });
+    });
+  });
+
+  // 단지: 순서대로 주소→좌표 (캐시되면 즉시), 실패하면 근사 좌표
+  var i = 0, done = 0, approxN = 0;
+  function next(){
+    if (i >= PLACES.length) { status.textContent = PLACES.length + '곳 표시' + (approxN ? ' (' + approxN + '곳은 근사 위치)' : ''); return; }
+    var p = PLACES[i++];
+    geocode(p.addr, function(pt){
+      var approx = !pt;
+      var pos = pt || p.approx;
+      if (approx && pos) approxN++;
+      if (pos) {
+        var mk = new naver.maps.Marker({ map: map, position: new naver.maps.LatLng(pos[0], pos[1]), icon: iconFor(p, approx), zIndex: p.pick ? 20 : 10 });
+        mk.__p = p;
+        naver.maps.Event.addListener(mk, 'click', function(){ infow.setContent(iwHtml(p, approx)); infow.open(map, mk); });
+        markers.push(mk);
+        var it = document.createElement('div'); it.className = 'it'; it.dataset.cat = p.cat;
+        it.innerHTML = '<b><span class="' + (p.cat === 'kook' ? 'sq' : 'dot') + '" style="background:' + color(p) + ';margin-right:6px"></span>' + p.name + '</b><small>' +
+          (p.kind === '행복주택' ? p.m2 + '㎡ ' + p.py + ' · 공가 ' + p.vac + ' · ' + p.dep + ' · 월 ' + p.rent + ' · ' + p.rank : p.rank) + '</small>';
+        it.addEventListener('click', function(){ map.setZoom(15, true); map.panTo(mk.getPosition()); infow.setContent(iwHtml(p, approx)); infow.open(map, mk); });
+        list.appendChild(it);
+      }
+      done++; status.textContent = done + ' / ' + PLACES.length + ' 좌표 변환 중…';
+      setTimeout(next, cache[p.addr] ? 0 : 80);
+    });
+  }
+  next();
+
+  // 필터
+  function applyFilter(){
+    var on = {}; document.querySelectorAll('header input[data-cat]').forEach(function(c){ on[c.dataset.cat] = c.checked; });
+    markers.forEach(function(mk){ mk.setMap(on[mk.__p.cat] ? map : null); });
+    document.querySelectorAll('#list .it').forEach(function(it){ it.style.display = on[it.dataset.cat] ? '' : 'none'; });
+  }
+  document.querySelectorAll('header input[data-cat]').forEach(function(c){ c.addEventListener('change', applyFilter); });
+  var obs = new MutationObserver(applyFilter); obs.observe(list, { childList: true });
+  naver.maps.Event.addListener(map, 'click', function(){ infow.close(); });
+}
+</script>
+</body>
+</html>
